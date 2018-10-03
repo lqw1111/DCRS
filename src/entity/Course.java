@@ -1,19 +1,22 @@
 package entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Course {
     public boolean login;
     public String CourseName;
     public String semester;
-    public int capacity;
+    public final int capacity = 6;
     public int enrollNumber;
     public int availability;
+    public List<String> studentList = new ArrayList<>();
 
     public Course(){}
 
-    public Course(String courseName, String semester, int capacity) {
+    public Course(String courseName, String semester) {
         CourseName = courseName;
         this.semester = semester;
-        this.capacity = capacity;
     }
 
     public boolean isLogin() {
@@ -44,10 +47,6 @@ public class Course {
         return capacity;
     }
 
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
-    }
-
     public int getEnrollNumber() {
         return enrollNumber;
     }
@@ -62,5 +61,13 @@ public class Course {
 
     public void setAvailability(int availability) {
         this.availability = availability;
+    }
+
+    public List<String> getStudentList() {
+        return studentList;
+    }
+
+    public void setStudentList(List<String> studentList) {
+        this.studentList = studentList;
     }
 }
