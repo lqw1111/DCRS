@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.rmi.Naming;
 import java.rmi.NotBoundException;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -57,9 +58,9 @@ public class Client {
         if (department.equals("comp")){
             port = "1111";
         } else if (department.equals("inse")) {
-            port = "2222";
-        } else if (department.equals("soen")) {
             port = "3333";
+        } else if (department.equals("soen")) {
+            port = "2222";
         } else {
             System.out.println("Not Found");
             return "";
@@ -67,12 +68,12 @@ public class Client {
         return port;
     }
 
-    public static void main(String[] args) throws RemoteException {
+    public void start() throws RemoteException{
         Logger logger = Logger.getLogger("client.log");
         logger.setLevel(Level.ALL);
 
 
-        System.out.println("Input your id:");
+        System.out.println("Input Your Id:");
         Scanner sc = new Scanner(System.in);
         String cmd = sc.nextLine();
         System.out.println(cmd);
@@ -85,7 +86,7 @@ public class Client {
         }
         fileHandler.setFormatter(new LoggerFormatter());
         logger.addHandler(fileHandler);
-        logger.info(cmd + "login successful");
+        logger.info(cmd + "  Login Successful");
 
 
         certificateIdentity certificateIdentity = parseStatus(cmd);
@@ -127,6 +128,7 @@ public class Client {
                         result = servent.enrolCourse(command[1],command[2],command[3]);
                         logger.info("Operation: " + result);
                         break;
+
                     case "dropCourse" :
                         result = servent.dropCourse(command[1],command[2]);
                         logger.info("Operation: " + result);
@@ -148,72 +150,43 @@ public class Client {
         }
         //student
         if (certificateIdentity.getStatus().equals("s")){
-            System.out.println("Input your operate: ");
-            cmd = sc.nextLine();
+            while(true){
+                System.out.println("Input your operate: ");
+                cmd = sc.nextLine();
 
-            String[] command = cmd.split(" ");
-            String result = "";
+                String[] command = cmd.split(" ");
+                String result = "";
 
-            switch(command[0]) {
-                case "enrolCourse" :
-                    result = servent.enrolCourse(command[1],command[2],command[3]);
-                    logger.info("Operation: " + result);
-                    break;
-                case "dropCourse" :
-                    result = servent.dropCourse(command[1],command[2]);
-                    logger.info("Operation: " + result);
-                    break;
-                case "getClassSchedule" :
-                    List<Course> classSchedule = servent.getClassSchedule(command[1]);
-                    System.out.println("Student " + command[1] + ":");
-                    for (Course course :
-                            classSchedule) {
-                        System.out.println("         " + course.getCourseName() + " " + course.getSemester());
-                    }
-                    logger.info("Operation: get class schedule");
-                    break;
-                default :
-                    System.out.println("Invalid Command!");
+                switch(command[0]) {
+                    case "enrolCourse" :
+                        result = servent.enrolCourse(command[1],command[2],command[3]);
+                        logger.info("Operation: " + result);
+                        break;
+                    case "dropCourse" :
+                        result = servent.dropCourse(command[1],command[2]);
+                        logger.info("Operation: " + result);
+                        break;
+                    case "getClassSchedule" :
+                        List<Course> classSchedule = servent.getClassSchedule(command[1]);
+                        System.out.println("Student " + command[1] + ":");
+                        for (Course course :
+                                classSchedule) {
+                            System.out.println("                         " + course.getCourseName() + " " + course.getSemester());
+                        }
+                        logger.info("Operation: get class schedule");
+                        break;
+                    default :
+                        System.out.println("Invalid Command!");
+                }
             }
-
+            
         }
 
     }
 
-//    public static void main(String[] args) {
-//        Servent servent = null;
-//        try {
-//
-//            Registry registry = LocateRegistry.getRegistry();
-//
-//            String registryURL = "rmi://localhost:1111/comp";
-//
-//            servent = (Servent) Naming.lookup(registryURL);
-//            servent.addCourse("comp1","fall");
-//            servent.addCourse("comp2","fall");
-//
-//            String registryURL1 = "rmi://localhost:2222/soen";
-//
-//            Servent servent1 = (Servent) Naming.lookup(registryURL1);
-//            servent1.addCourse("soen1","fall");
-//            servent1.addCourse("soen2","fall");
-//
-//            String registryURL2 = "rmi://localhost:3333/inse";
-//
-//            Servent servent2 = (Servent) Naming.lookup(registryURL2);
-//            servent2.addCourse("inse1","fall");
-//            servent2.addCourse("inse2","fall");
-//
-//            System.out.println(servent.listCourseAvailability("fall"));
-//
-//        }catch (RemoteException e) {
-//            e.printStackTrace();
-//        } catch (NotBoundException e) {
-//            e.printStackTrace();
-//        }catch (MalformedURLException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
+    public static void main(String[] args) throws RemoteException {
+        Client client = new Client();
+        client.start();
+    }
 
 }

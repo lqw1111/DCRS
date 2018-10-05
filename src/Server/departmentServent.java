@@ -13,6 +13,8 @@ import java.rmi.server.RMIClientSocketFactory;
 import java.rmi.server.RMIServerSocketFactory;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
 
 public class departmentServent extends UnicastRemoteObject implements Servent {
@@ -23,7 +25,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     public Logger logger;
     public String department;
 
-    HashMap<String, HashMap<String, Course>> compCourseDatabase = new HashMap<String, HashMap<String,Course>>();
+    ConcurrentHashMap<String, HashMap<String, Course>> compCourseDatabase = new ConcurrentHashMap<String, HashMap<String, Course>>();
 
     //studentId -> student
     Map<String, Student> studentEnrollDatabase = new HashMap<String,Student>();
@@ -40,6 +42,14 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
         HashMap<String, Course> summerCourse = new HashMap<>();
         compCourseDatabase.put("summer", summerCourse);
+
+        Student student1 = new Student(department + "s1111",new ArrayList<Course>());
+        Student student2 = new Student(department + "s2222",new ArrayList<Course>());
+        Student student3 = new Student(department + "s3333",new ArrayList<Course>());
+
+        studentEnrollDatabase.put(department + "s1111",student1);
+        studentEnrollDatabase.put(department + "s2222",student2);
+        studentEnrollDatabase.put(department + "s3333",student3);
     }
 
     protected departmentServent(int port) throws RemoteException {
@@ -84,10 +94,8 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     public List<String> listCourseAvailability(String semester) throws RemoteException {
         logger.info("list course availability : " + semester);
 
-        //get Local Course List
         List<String> courseList = getLocalCourseList(semester);
 
-        //get remote server data
         try {
             String courseAvailibleList = "";
             String message = "listCourseAvailability " + semester;
@@ -145,36 +153,39 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
         String department = courseId.substring(0,4);
         if (department.equals(this.department)){
-            //看这个学生是否可以enroll
-            //查看学生在当前这个学期上了几门课，如果超过3门就不允许enroll
-            //查看这门课是否有空位，如果没有就不允许enroll
-            //开始enroll
-            //1. 在studentDb中get这个学生的instance，get到course的list，new一门新的course，set学期和id，向list中添加这门课程
-            //2. 在compCourseDatabase中get到semester的map，在map中get到course对应的对象，在该对象的list student中加入该学生的学号
-            //enroll成功
-            if(allowToEnroll(studentId, semester) &&
-                    compCourseDatabase.get(semester).get(courseId).getEnrollNumber() < compCourseDatabase.get(semester).get(courseId).getCapacity()){
-                Student student = studentEnrollDatabase.get(studentId);
-                Course course = compCourseDatabase.get(semester).get(courseId);
-                student.getStudentEnrollCourseList().add(course);
-                course.getStudentList().add(studentId);
-                course.setEnrollNumber(course.getEnrollNumber() + 1);
+            if (compCourseDatabase.get(semester).containsKey(courseId)){
+                if(allowToEnroll(studentId, courseId, semester) &&
+                        compCourseDatabase.get(semester).get(courseId).getEnrollNumber() < compCourseDatabase.get(semester).get(courseId).getCapacity()){
+                    Student student = studentEnrollDatabase.get(studentId);
+                    Course course = compCourseDatabase.get(semester).get(courseId);
 
-                result = (courseId + "enroll Successfully");
+                    //if the student belongs to depart,it is a local operate,otherwise it is a remote operate
+                    if (studentId.substring(0,4).equals(this.department)){
+                        student.getStudentEnrollCourseList().add(course);
+                    }
+                    course.getStudentList().add(studentId);
+                    course.setEnrollNumber(course.getEnrollNumber() + 1);
+
+                    result = (courseId + " enroll Successfully");
+                } else {
+                    result = (courseId + "Do not allow to enroll");
+                }
             } else {
-                result = (courseId + "Do not allow to enroll");
+                result = "The Course does not Exist!";
             }
 
+
         } else {
-            //确定学生所选可课程在哪个department
-            //在studnetdb中get到list course，对list遍历，如果这个学期，在department的课超过了两个，就不能选
-            //sendmessage
-            //得到返回的注册状态
             if(enrollInOtherDepartment(studentId, semester, department)){
                 int port = getPort(department);
 
                 try {
-                    result = sendMessage("enroll " + studentId + " " + courseId + " " + semester, port);
+                    result = sendMessage("enrolCourse " + studentId + " " + courseId + " " + semester, port);
+                    if (result.contains("Successfully")){
+                        Course course = new Course(courseId,semester);
+                        Student student = studentEnrollDatabase.get(studentId);
+                        student.getStudentEnrollCourseList().add(course);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -199,7 +210,9 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         return (courseNum < 2);
     }
 
-    private boolean allowToEnroll(String studentId, String semester) {
+    private boolean allowToEnroll(String studentId,String courseId, String semester) {
+        if (!studentId.substring(0,4).equals(this.department) && !compCourseDatabase.get(semester).get(courseId).getStudentList().contains(studentId)) return true;
+        if (compCourseDatabase.get(semester).get(courseId).getStudentList().contains(studentId)) return false;
         int courseNum = 0;
         Student student = studentEnrollDatabase.get(studentId);
         List<Course> courses = student.getStudentEnrollCourseList();
@@ -214,31 +227,40 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     @Override
     public String dropCourse(String studentId, String courseId) throws RemoteException {
-
+        boolean findTargetCourse = false;
         String result = "";
         String department = courseId.substring(0,4);
-        //使用studentid get到相应的学生的对象，get到student中的courselist，删除studentdb中的course，在其中拿到semester
+
         Student student = studentEnrollDatabase.get(studentId);
         List<Course> courseList = student.getStudentEnrollCourseList();
         String semester = "";
+        List<Course> removeCourses = new ArrayList<Course>();
         for (Course course: courseList){
             if (course.getCourseName().equals(courseId)){
+                findTargetCourse = true;
                 semester = course.getSemester();
-                courseList.remove(course);
+                removeCourses.add(course);
             }
         }
 
-        if (department.equals(this.department)){
-            result = dropLocalCourse(studentId, courseId, semester);
-        } else{
-            String message = "drop " + studentId + " " + courseId + " " + semester;
-            int port = getPort(department);
-            try {
-                result = sendMessage(message, port);
-            } catch (Exception e) {
-                e.printStackTrace();
+        if (findTargetCourse){
+            courseList.removeAll(removeCourses);
+
+            if (department.equals(this.department)){
+                result = dropLocalCourse(studentId, courseId, semester);
+            } else{
+                String message = "dropCourse " + studentId + " " + courseId + " " + semester;
+                int port = getPort(department);
+                try {
+                    result = sendMessage(message, port);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+        } else {
+            result = "Course Not Found In The Student Course List";
         }
+
         logger.info("drop course : " + studentId + " " + courseId + " : " + result);
 
         return result;
@@ -247,10 +269,6 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     public String dropLocalCourse(String studentId, String courseId, String semester) {
         String result = "";
-
-        //如果是本地课程
-        //1.compCourseDatabase中get到相应的semester，在get到的map中拿到对应的course的对象，在course中拿到student的list，从list中删除这个学生的id
-        //2.return 成功
         HashMap<String, Course> courseMap = compCourseDatabase.get(semester);
         Course course = courseMap.get(courseId);
         List<String> studentIdList = course.getStudentList();
@@ -284,23 +302,21 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
 
     private static String sendMessage(String message, int port) throws Exception{
-        //定义服务器的地址，端口号，数据
         InetAddress address = InetAddress.getByName("localhost");
 
-        byte[] data = message.getBytes();//将字符串转换为字节数组
-        //创建数据报
+        byte[] data = message.getBytes();
         DatagramPacket sendPacket = new DatagramPacket(data, data.length, address, port);
-        //创建DatagramSocket，实现数据发送和接收
+
         DatagramSocket socket = new DatagramSocket();
-        //向服务器端发送数据报
+
         socket.send(sendPacket);
 
-        //接收服务器响应数据
+
         byte[] receiveData = new byte[1024];
         DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
         socket.receive(receivePacket);
         String info = new String(receiveData, 0, receivePacket.getLength());
-        System.out.println("我是客户端，服务器说："+info);
+//        System.out.println("我是客户端，服务器说："+info);
         socket.close();
         return info;
     }

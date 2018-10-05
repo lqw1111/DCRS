@@ -47,10 +47,10 @@ class UpdThread implements Runnable {
                         result = result + course + " ";
                     }
                     break;
-                case "enrollCourse" :
+                case "enrolCourse" :
                     System.out.println("enroll Course");
                     result = servent.enrolCourse(command[1],command[2],command[3]);
-
+                    break;
                 case "dropCourse" :
                     System.out.println("Well done");
                     result = servent.dropLocalCourse(command[1],command[2],command[3]);

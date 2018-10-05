@@ -1,12 +1,15 @@
 package entity;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class Student {
+public class Student implements Serializable {
     public String studentId;
     public List<Course> studentEnrollCourseList;
 
-    public Student() {
+    public Student(String studentId , List<Course> studentEnrollCourseList) {
+        this.studentId = studentId;
+        this.studentEnrollCourseList = studentEnrollCourseList;
     }
 
     public String getStudentId() {

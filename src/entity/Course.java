@@ -1,9 +1,10 @@
 package entity;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Course {
+public class Course implements Serializable {
     public boolean login;
     public String CourseName;
     public String semester;
@@ -11,8 +12,6 @@ public class Course {
     public int enrollNumber;
     public int availability;
     public List<String> studentList = new ArrayList<>();
-
-    public Course(){}
 
     public Course(String courseName, String semester) {
         CourseName = courseName;
