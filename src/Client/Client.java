@@ -76,7 +76,6 @@ public class Client {
         System.out.println("Input Your Id:");
         Scanner sc = new Scanner(System.in);
         String cmd = sc.nextLine();
-        System.out.println(cmd);
 
         FileHandler fileHandler = null;
         try {
@@ -98,49 +97,85 @@ public class Client {
         //advisor
         if (certificateIdentity.getStatus().equals("a")){
             while(true){
-                System.out.println("Input your operate: ");
+                System.out.println("Input your operate: \n           " +
+                        "1.Add Course\n           " +
+                        "2.Remove Course\n           " +
+                        "3.List Course Availability\n           " +
+                        "4.Enroll Course\n           " +
+                        "5.Drop Course\n           " +
+                        "6.Get Class Schedule");
                 cmd = sc.nextLine();
 
-                String[] command = cmd.split(" ");
+//                String[] command = cmd.split(" ");
                 String result = "";
+                String courseId = "";
+                String studendId = "";
 
-                switch(command[0]) {
-                    case "add" :
-                        result = servent.addCourse(command[1],command[2]);
+                switch(cmd) {
+                    //add
+                    case "1" :
+                        System.out.println("Input The Course Id: ");
+                        courseId = sc.nextLine();
+                        System.out.println("Input Semester: ");
+                        String semester = sc.nextLine();
+                        result = servent.addCourse(courseId,semester);
                         logger.info("Operation: " + result);
                         break;
-                    case "remove" :
-                        System.out.println("enroll Course");
-                        result = servent.enrolCourse(command[1],command[2],command[3]);
+                    //remove
+                    case "2" :
+                        System.out.println("Input The Course Id: ");
+                        courseId = sc.nextLine();
+                        System.out.println("Input The Semester : ");
+                        semester = sc.nextLine();
+                        result = servent.removeCourse(courseId,semester);
                         logger.info("Operation: " + result);
                         break;
-
-                    case "listCourseAvailability" :
-                        System.out.println("Well done");
-                        List<String> courseAvailability = servent.listCourseAvailability(command[1]);
+                    //listCourseAvailability
+                    case "3" :
+                        System.out.println("Input the semester");
+                        semester = sc.nextLine();
+                        List<String> courseAvailability = servent.listCourseAvailability(semester);
                         System.out.println("Print Course List: ");
                         for (String course : courseAvailability){
                             System.out.println("              " + course);
                         }
                         logger.info("list Course Availability");
                         break;
-                    case "enrolCourse" :
-                        result = servent.enrolCourse(command[1],command[2],command[3]);
+                    //enrolCourse
+                    case "4" :
+                        System.out.println("Input The Student Id: ");
+                        studendId = sc.nextLine();
+                        System.out.println("Input The Course Id : ");
+                        courseId = sc.nextLine();
+                        System.out.println("Input The Semester : ");
+                        semester = sc.nextLine();
+                        result = servent.enrolCourse(studendId,courseId,semester);
                         logger.info("Operation: " + result);
                         break;
-
-                    case "dropCourse" :
-                        result = servent.dropCourse(command[1],command[2]);
+                    //dropCourse
+                    case "5" :
+                        System.out.println("Input The Student Id: ");
+                        studendId = sc.nextLine();
+                        System.out.println("Input The Course Id : ");
+                        courseId = sc.nextLine();
+                        result = servent.dropCourse(studendId,courseId);
                         logger.info("Operation: " + result);
                         break;
-                    case "getClassSchedule" :
-                        List<Course> classSchedule = servent.getClassSchedule(command[1]);
-                        System.out.println("Student " + command[1] + ":");
-                        for (Course course :
-                                classSchedule) {
-                            System.out.println("         " + course.getCourseName() + " " + course.getSemester());
+                    //getClassSchedule
+                    case "6" :
+                        System.out.println("Input The Student Id: ");
+                        studendId = sc.nextLine();
+                        List<Course> classSchedule = servent.getClassSchedule(studendId);
+                        if (classSchedule == null){
+                            logger.info("The Student Does Not Exist! Please Contact With Advisor!");
+                        }else {
+                            System.out.println("Student " + studendId + ":");
+                            for (Course course :
+                                    classSchedule) {
+                                System.out.println("                      " + course.getCourseName() + " " + course.getSemester());
+                            }
+                            logger.info("Operation: get class schedule");
                         }
-                        logger.info("Operation: get class schedule");
                         break;
                     default :
                         System.out.println("Invalid Command!");
@@ -151,35 +186,59 @@ public class Client {
         //student
         if (certificateIdentity.getStatus().equals("s")){
             while(true){
-                System.out.println("Input your operate: ");
+                System.out.println("Input your operate: \n           " +
+                        "1.Enroll Course\n           " +
+                        "2.Drop Course\n           " +
+                        "3.Get Class Schedule");
                 cmd = sc.nextLine();
 
-                String[] command = cmd.split(" ");
                 String result = "";
+                String courseId = "";
+                String studendId = "";
+                String semester = "";
 
-                switch(command[0]) {
-                    case "enrolCourse" :
-                        result = servent.enrolCourse(command[1],command[2],command[3]);
+                switch(cmd) {
+                    //enroll Course
+                    case "1" :
+                        System.out.println("Input The Student Id: ");
+                        studendId = sc.nextLine();
+                        System.out.println("Input The Course Id : ");
+                        courseId = sc.nextLine();
+                        System.out.println("Input The Semester : ");
+                        semester = sc.nextLine();
+                        result = servent.enrolCourse(studendId,courseId,semester);
                         logger.info("Operation: " + result);
                         break;
-                    case "dropCourse" :
-                        result = servent.dropCourse(command[1],command[2]);
+                    //dropCourse
+                    case "2" :
+                        System.out.println("Input The Student Id: ");
+                        studendId = sc.nextLine();
+                        System.out.println("Input The Course Id : ");
+                        courseId = sc.nextLine();
+                        result = servent.dropCourse(studendId,courseId);
                         logger.info("Operation: " + result);
                         break;
-                    case "getClassSchedule" :
-                        List<Course> classSchedule = servent.getClassSchedule(command[1]);
-                        System.out.println("Student " + command[1] + ":");
-                        for (Course course :
-                                classSchedule) {
-                            System.out.println("                         " + course.getCourseName() + " " + course.getSemester());
+                    //getClassSchedule
+                    case "3" :
+                        System.out.println("Input The Student Id: ");
+                        studendId = sc.nextLine();
+                        List<Course> classSchedule = servent.getClassSchedule(studendId);
+                        if (classSchedule == null){
+                            logger.info("The Student Does Not Exist! Please Contact With Advisor!");
+                        }else {
+                            System.out.println("Student " + studendId + ":");
+                            for (Course course :
+                                    classSchedule) {
+                                System.out.println("                       " + course.getCourseName() + " " + course.getSemester());
+                            }
+                            logger.info("Operation: get class schedule");
                         }
-                        logger.info("Operation: get class schedule");
                         break;
                     default :
                         System.out.println("Invalid Command!");
                 }
             }
-            
+
         }
 
     }

@@ -52,8 +52,10 @@ class UpdThread implements Runnable {
                     result = servent.enrolCourse(command[1],command[2],command[3]);
                     break;
                 case "dropCourse" :
-                    System.out.println("Well done");
                     result = servent.dropLocalCourse(command[1],command[2],command[3]);
+                    break;
+                case "dropRemovedCourseFromStuCourList" :
+                    result = servent.dropRemovedCourseFromStuCourList(command[1]);
                     break;
                 default :
                     System.out.println("Invalid Command!");

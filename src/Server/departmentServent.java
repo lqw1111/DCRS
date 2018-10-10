@@ -46,10 +46,14 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         Student student1 = new Student(department + "s1111",new ArrayList<Course>());
         Student student2 = new Student(department + "s2222",new ArrayList<Course>());
         Student student3 = new Student(department + "s3333",new ArrayList<Course>());
+        Student student4 = new Student(department + "s4444",new ArrayList<Course>());
+        Student student5 = new Student(department + "s5555",new ArrayList<Course>());
 
         studentEnrollDatabase.put(department + "s1111",student1);
         studentEnrollDatabase.put(department + "s2222",student2);
         studentEnrollDatabase.put(department + "s3333",student3);
+        studentEnrollDatabase.put(department + "s4444",student4);
+        studentEnrollDatabase.put(department + "s5555",student5);
     }
 
     protected departmentServent(int port) throws RemoteException {
@@ -63,20 +67,20 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     @Override
     public String addCourse(String courseId, String semester) throws RemoteException {
+        if (compCourseDatabase.get(semester) == null ) return "The Semester Does Not Exist! Please Check The Semester";
         String result = "";
         Course newCourse = new Course(courseId , semester);
         HashMap<String,Course> courseIdCourseMap = compCourseDatabase.get(semester);
 
         if (courseIdCourseMap.containsKey(courseId)){
-            System.out.println("The course have already added!");
-            result = "The course have already added!";
+            result = "The Course Have Already Added!";
         } else {
             courseIdCourseMap.put(courseId, newCourse);
             compCourseDatabase.put(semester,courseIdCourseMap);
         }
-        result = "add Successful";
-        System.out.println(compCourseDatabase.get("fall").size());
-        logger.info("add course:" + courseId + " " + semester + " : " + result);
+        result = "Add Successful";
+
+        logger.info("Add Course: " + courseId + " " + semester + " : " + result);
 
         return result;
 
@@ -84,15 +88,64 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     @Override
     public String removeCourse(String courseId, String semester) throws RemoteException {
+        if (compCourseDatabase.get(semester) == null ) return "The Semester Does Not Exist! Please Check The Semester";
+
         HashMap<String,Course> courseList = compCourseDatabase.get(semester);
+
+        //delete the course from course list
         courseList.remove(courseId);
-        logger.info("remove course:" + courseId + " " + semester + " : " + "remove Successful");
-        return "remove Successful";
+
+        //drop the course from all the student who enroll the course
+        String department = courseId.substring(0,4);
+        dropRemovedCourseFromStuCourList(courseId);
+        try {
+            notifyOtherDepartment(courseId);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        logger.info("Remove Course:" + courseId + " " + semester + " : " + " Remove Successful");
+        return "Remove Successful";
+    }
+
+    private void notifyOtherDepartment(String courseId) throws Exception {
+        String message = "dropRemovedCourseFromStuCourList " + courseId;
+        if (this.department.equals("comp")){
+
+            sendMessage(message , getPort("inse"));
+            sendMessage(message , getPort("soen"));
+        } else if(this.department.equals("inse")){
+
+            sendMessage(message , getPort("comp"));
+            sendMessage(message , getPort("soen"));
+        } else if(this.department.equals("soen")){
+
+            sendMessage(message , getPort("comp"));
+            sendMessage(message , getPort("inse"));
+        }
+    }
+
+
+    public String dropRemovedCourseFromStuCourList(String courseId){
+        List<String> studentList = new ArrayList<>();
+        for (Map.Entry<String,Student> studentEntry:
+                studentEnrollDatabase.entrySet()) {
+            List<Course> courseList = studentEntry.getValue().getStudentEnrollCourseList();
+
+            for (int i = 0; i < courseList.size(); i++) {
+                if(courseList.get(i).getCourseName().equals(courseId)){
+                    studentList.add(studentEntry.getKey());
+                    studentEntry.getValue().getStudentEnrollCourseList().remove(i);
+                }
+            }
+        }
+
+        return "Remove Successful";
     }
 
     @Override
     public List<String> listCourseAvailability(String semester) throws RemoteException {
-        logger.info("list course availability : " + semester);
+        logger.info("List Course Availability : " + semester);
 
         List<String> courseList = getLocalCourseList(semester);
 
@@ -100,13 +153,13 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
             String courseAvailibleList = "";
             String message = "listCourseAvailability " + semester;
             if (this.department.equals("comp")){
-                courseAvailibleList = getRemoteCourseList(message,2223,message,3334);
+                courseAvailibleList = getRemoteCourseList(message,2223, message,3334);
 
             } else if(this.department.equals("inse")){
-                courseAvailibleList = getRemoteCourseList(message,2223,message,1112);
+                courseAvailibleList = getRemoteCourseList(message,2223, message,1112);
 
             } else if(this.department.equals("soen")){
-                courseAvailibleList = getRemoteCourseList(message,1112,message,3334);
+                courseAvailibleList = getRemoteCourseList(message,1112, message,3334);
             }
 
             String[] courses = courseAvailibleList.split(" ");
@@ -150,6 +203,9 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     @Override
     public String enrolCourse(String studentId, String courseId, String semester) throws RemoteException {
         String result = "";
+        if (studentEnrollDatabase.get(studentId) == null && this.department.equals(studentId.substring(0,4))) {
+            return "The Student Does Not Exist! Please Contact With Advisor!";
+        }
 
         String department = courseId.substring(0,4);
         if (department.equals(this.department)){
@@ -227,6 +283,11 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     @Override
     public String dropCourse(String studentId, String courseId) throws RemoteException {
+
+        if (studentEnrollDatabase.get(studentId) == null && this.department.equals(studentId.substring(0,4))) {
+            return "The Student Does Not Exist! Please Contact With Advisor!";
+        }
+
         boolean findTargetCourse = false;
         String result = "";
         String department = courseId.substring(0,4);
@@ -274,15 +335,17 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         List<String> studentIdList = course.getStudentList();
 
         if(studentIdList.remove(studentId)){
-            result = "drop Successful!";
+            result = "Drop Successful!";
         } else{
-            result = "drop fail";
+            result = "Drop Fail";
         }
         return result;
     }
 
     @Override
     public List<Course> getClassSchedule(String studentId) throws RemoteException {
+        if (studentEnrollDatabase.get(studentId) == null) return null;
+
         logger.info("get class schedule : " + studentId);
 
         return studentEnrollDatabase.get(studentId).getStudentEnrollCourseList();
