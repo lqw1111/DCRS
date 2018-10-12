@@ -40,7 +40,6 @@ class UpdThread implements Runnable {
 
             switch(command[0]) {
                 case "listCourseAvailability" :
-                    System.out.println("list Course Availability");
                     List<String> courseList = servent.getLocalCourseList(command[1]);
                     for (String course :
                             courseList) {
@@ -48,7 +47,6 @@ class UpdThread implements Runnable {
                     }
                     break;
                 case "enrolCourse" :
-                    System.out.println("enroll Course");
                     result = servent.enrolCourse(command[1],command[2],command[3]);
                     break;
                 case "dropCourse" :

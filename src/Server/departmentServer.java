@@ -64,6 +64,7 @@ public class departmentServer {
             data = new byte[1024];
             packet = new DatagramPacket(data, data.length);
             socket.receive(packet);
+            logger.info("Server Recv Message :" + new String(packet.getData(), 0, packet.getLength()));
             Thread thread = new Thread(new UpdThread(socket, packet, this.servent));
             thread.start();
             count++;

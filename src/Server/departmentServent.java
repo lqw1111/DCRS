@@ -25,22 +25,22 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     public Logger logger;
     public String department;
 
-    ConcurrentHashMap<String, HashMap<String, Course>> compCourseDatabase = new ConcurrentHashMap<String, HashMap<String, Course>>();
+    ConcurrentHashMap<String, ConcurrentHashMap<String, Course>> compCourseDatabase = new ConcurrentHashMap<String, ConcurrentHashMap<String, Course>>();
 
     //studentId -> student
-    Map<String, Student> studentEnrollDatabase = new HashMap<String,Student>();
+    Map<String, Student> studentEnrollDatabase = new ConcurrentHashMap<String,Student>();
 
     protected departmentServent(String department, Logger logger) throws RemoteException {
         this.department = department;
         this.logger = logger;
 
-        HashMap<String, Course> fallCourse = new HashMap<>();
+        ConcurrentHashMap<String, Course> fallCourse = new ConcurrentHashMap<String, Course>();
         compCourseDatabase.put("fall", fallCourse);
 
-        HashMap<String, Course> winterCourse = new HashMap<>();
+        ConcurrentHashMap<String, Course> winterCourse = new ConcurrentHashMap<String, Course>();
         compCourseDatabase.put("winter", winterCourse);
 
-        HashMap<String, Course> summerCourse = new HashMap<>();
+        ConcurrentHashMap<String, Course> summerCourse = new ConcurrentHashMap<String, Course>();
         compCourseDatabase.put("summer", summerCourse);
 
         Student student1 = new Student(department + "s1111",new ArrayList<Course>());
@@ -68,44 +68,58 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     @Override
     public String addCourse(String courseId, String semester) throws RemoteException {
         if (compCourseDatabase.get(semester) == null ) return "The Semester Does Not Exist! Please Check The Semester";
-        String result = "";
-        Course newCourse = new Course(courseId , semester);
-        HashMap<String,Course> courseIdCourseMap = compCourseDatabase.get(semester);
+        if (courseId.substring(0,4).equals(this.department)){
+            String result = "";
+            Course newCourse = new Course(courseId , semester);
+            ConcurrentHashMap<String, Course> courseIdCourseMap = compCourseDatabase.get(semester);
 
-        if (courseIdCourseMap.containsKey(courseId)){
-            result = "The Course Have Already Added!";
+            if (courseIdCourseMap.containsKey(courseId)){
+                result = "The Course Have Already Added!";
+            } else {
+                courseIdCourseMap.put(courseId, newCourse);
+                compCourseDatabase.put(semester,courseIdCourseMap);
+            }
+            result = "Add Successful";
+
+            logger.info("Add Course:" + courseId + " " + semester + ":" + result);
+
+            return result;
         } else {
-            courseIdCourseMap.put(courseId, newCourse);
-            compCourseDatabase.put(semester,courseIdCourseMap);
+            logger.info("Add Course:" + courseId + " " + semester + ":" + "Not Authorized");
+            return "You Are Not Authorized To Add The Course ";
         }
-        result = "Add Successful";
-
-        logger.info("Add Course: " + courseId + " " + semester + " : " + result);
-
-        return result;
-
     }
 
     @Override
     public String removeCourse(String courseId, String semester) throws RemoteException {
         if (compCourseDatabase.get(semester) == null ) return "The Semester Does Not Exist! Please Check The Semester";
 
-        HashMap<String,Course> courseList = compCourseDatabase.get(semester);
+        if (!courseId.substring(0,4).equals(this.department)){
+            logger.info("Remove Course:" + courseId + " " + semester + ":" + " Not Authorized");
+            return "You Are Not Authorized To Delete The Course ";
+        } else{
+            ConcurrentHashMap<String, Course> courseList = compCourseDatabase.get(semester);
 
-        //delete the course from course list
-        courseList.remove(courseId);
+            //delete the course from course list
+            if (courseList.containsKey(courseId)){
+                courseList.remove(courseId);
 
-        //drop the course from all the student who enroll the course
-        String department = courseId.substring(0,4);
-        dropRemovedCourseFromStuCourList(courseId);
-        try {
-            notifyOtherDepartment(courseId);
-        } catch (Exception e) {
-            e.printStackTrace();
+                //drop the course from all the student who enroll the course
+                String department = courseId.substring(0,4);
+                dropRemovedCourseFromStuCourList(courseId);
+                try {
+                    notifyOtherDepartment(courseId);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                logger.info("Remove Course:" + courseId + " " + semester + ":" + " Remove Successful");
+                return "Remove Successful";
+            } else{
+                logger.info("Remove Course:" + courseId + " " + semester + ":" + "The Course Doesn't Exist");
+                return "The Course Doesn't Exist";
+            }
         }
-
-        logger.info("Remove Course:" + courseId + " " + semester + " : " + " Remove Successful");
-        return "Remove Successful";
     }
 
     private void notifyOtherDepartment(String courseId) throws Exception {
@@ -145,7 +159,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     @Override
     public List<String> listCourseAvailability(String semester) throws RemoteException {
-        logger.info("List Course Availability : " + semester);
+        logger.info("List Course Availability :" + semester);
 
         List<String> courseList = getLocalCourseList(semester);
 
@@ -179,12 +193,12 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         List<String> courseList = new ArrayList<>();
 
         //get local data
-        HashMap<String,Course> courseMap = compCourseDatabase.get(semester);
+        ConcurrentHashMap<String, Course> courseMap = compCourseDatabase.get(semester);
 
         for (Map.Entry<String, Course> entry: courseMap.entrySet()){
             Course course = entry.getValue();
             if (course.getCapacity() - course.getEnrollNumber() > 0){
-                courseList.add(entry.getKey());
+                courseList.add(entry.getKey() + "--"+ (entry.getValue().getCapacity() - entry.getValue().getEnrollNumber()));
             }
         }
 
@@ -193,10 +207,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     private String getRemoteCourseList(String message1 , int port1, String message2 , int port2) throws Exception {
         String receive1 = sendMessage(message1, port1);
-        System.out.println("comp课表：" + receive1);
         String receive2 = sendMessage(message2, port2);
-        System.out.println("inse课表：" + receive2);
-
         return receive1 + receive2;
     }
 
@@ -222,9 +233,9 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
                     course.getStudentList().add(studentId);
                     course.setEnrollNumber(course.getEnrollNumber() + 1);
 
-                    result = (courseId + " enroll Successfully");
+                    result = (courseId + " Enroll Successfully");
                 } else {
-                    result = (courseId + "Do not allow to enroll");
+                    result = (courseId + " Do not allow to enroll");
                 }
             } else {
                 result = "The Course does not Exist!";
@@ -250,7 +261,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
             }
 
         }
-        logger.info("enroll course: " + studentId + " " + courseId + " " + semester + " : " + result);
+        logger.info("Enroll Course :" + studentId + " " + courseId + " " + semester + ":" + result);
         return result;
     }
 
@@ -322,7 +333,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
             result = "Course Not Found In The Student Course List";
         }
 
-        logger.info("drop course : " + studentId + " " + courseId + " : " + result);
+        logger.info("Drop Course :" + studentId + " " + courseId + ":" + result);
 
         return result;
     }
@@ -330,11 +341,12 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
     public String dropLocalCourse(String studentId, String courseId, String semester) {
         String result = "";
-        HashMap<String, Course> courseMap = compCourseDatabase.get(semester);
+        ConcurrentHashMap<String, Course> courseMap = compCourseDatabase.get(semester);
         Course course = courseMap.get(courseId);
         List<String> studentIdList = course.getStudentList();
 
         if(studentIdList.remove(studentId)){
+            course.setEnrollNumber(course.getEnrollNumber() - 1);
             result = "Drop Successful!";
         } else{
             result = "Drop Fail";
@@ -346,7 +358,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     public List<Course> getClassSchedule(String studentId) throws RemoteException {
         if (studentEnrollDatabase.get(studentId) == null) return null;
 
-        logger.info("get class schedule : " + studentId);
+        logger.info("Get Class Schedule :" + studentId);
 
         return studentEnrollDatabase.get(studentId).getStudentEnrollCourseList();
     }
@@ -364,7 +376,8 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     }
 
 
-    private static String sendMessage(String message, int port) throws Exception{
+    private String sendMessage(String message, int port) throws Exception{
+        logger.info("Client Send Request :" + message);
         InetAddress address = InetAddress.getByName("localhost");
 
         byte[] data = message.getBytes();
@@ -374,12 +387,11 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
 
         socket.send(sendPacket);
 
-
         byte[] receiveData = new byte[1024];
         DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
         socket.receive(receivePacket);
         String info = new String(receiveData, 0, receivePacket.getLength());
-//        System.out.println("我是客户端，服务器说："+info);
+        logger.info("Client Recv Response :" + info);
         socket.close();
         return info;
     }
