@@ -48,12 +48,22 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         Student student3 = new Student(department + "s3333",new ArrayList<Course>());
         Student student4 = new Student(department + "s4444",new ArrayList<Course>());
         Student student5 = new Student(department + "s5555",new ArrayList<Course>());
+        Student student6 = new Student(department + "s6666",new ArrayList<Course>());
+        Student student7 = new Student(department + "s7777",new ArrayList<Course>());
+        Student student8 = new Student(department + "s8888",new ArrayList<Course>());
+        Student student9 = new Student(department + "s9999",new ArrayList<Course>());
+        Student student10 = new Student(department + "s1010",new ArrayList<Course>());
 
         studentEnrollDatabase.put(department + "s1111",student1);
         studentEnrollDatabase.put(department + "s2222",student2);
         studentEnrollDatabase.put(department + "s3333",student3);
         studentEnrollDatabase.put(department + "s4444",student4);
         studentEnrollDatabase.put(department + "s5555",student5);
+        studentEnrollDatabase.put(department + "s6666",student6);
+        studentEnrollDatabase.put(department + "s7777",student7);
+        studentEnrollDatabase.put(department + "s8888",student8);
+        studentEnrollDatabase.put(department + "s9999",student9);
+        studentEnrollDatabase.put(department + "s1010",student10);
     }
 
     protected departmentServent(int port) throws RemoteException {
@@ -79,10 +89,9 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
                 synchronized (courseIdCourseMap){
                     courseIdCourseMap.put(courseId, newCourse);
                     compCourseDatabase.put(semester,courseIdCourseMap);
+                    result = "Add Successful";
                 }
             }
-            result = "Add Successful";
-
             logger.info("Add Course:" + courseId + " " + semester + ":" + result);
 
             return result;
@@ -184,7 +193,9 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
             String[] courses = courseAvailibleList.split(" ");
             for (String course :
                     courses) {
-                courseList.add(course);
+                if (!course.equals("")){
+                    courseList.add(course);
+                }
             }
 
         } catch (Exception e) {
@@ -275,13 +286,17 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
     private boolean enrollInOtherDepartment(String studentId, String semester, String department) {
         int courseNum = 0;
         Student student = studentEnrollDatabase.get(studentId);
-        List<Course> courses = student.getStudentEnrollCourseList();
-        for (Course course : courses){
-            if (course.getSemester().equals(semester) && course.getCourseName().substring(0,4).equals(department)){
-                courseNum = courseNum + 1;
+        if (student == null){
+            return false;
+        } else{
+            List<Course> courses = student.getStudentEnrollCourseList();
+            for (Course course : courses){
+                if (course.getSemester().equals(semester) && course.getCourseName().substring(0,4).equals(department)){
+                    courseNum = courseNum + 1;
+                }
             }
+            return (courseNum < 2);
         }
-        return (courseNum < 2);
     }
 
     private boolean allowToEnroll(String studentId,String courseId, String semester) {
