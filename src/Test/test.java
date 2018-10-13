@@ -4,26 +4,38 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class test {
     public static void main(String[] args) throws IOException {
-        BufferedReader inFromUser =
-                new BufferedReader(new InputStreamReader(System.in));
-        DatagramSocket clientSocket = new DatagramSocket();
-        InetAddress IPAddress = InetAddress.getByName("localhost");
+        Map<String,Integer> map = new HashMap<>();
+        map.put("1",1);
 
-        byte[] sendData = new byte[1024];
-        byte[] receiveData = new byte[1024];
+        Thread thread1 = new Thread(new Thread1(map));
+        Thread thread2 = new Thread(new Thread1(map));
+        thread1.start();
+        thread2.start();
+    }
+}
 
-        String sentence = inFromUser.readLine();
-        sendData = sentence.getBytes();
+class Thread1 implements Runnable{
 
-        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 3334);
-        clientSocket.send(sendPacket);
-        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-        clientSocket.receive(receivePacket);
-        String modifiedSentence = new String(receivePacket.getData());
-        System.out.println("FROM SERVER:" + modifiedSentence);
-        clientSocket.close();
+    public Map<String, Integer> map;
+
+    public Thread1(Map<String, Integer> map) {
+        this.map = map;
+    }
+
+    @Override
+    public void run() {
+        for(int i = 0 ; i < 100 ; i ++){
+            System.out.println(map.get("1"));
+            int num = map.get("1");
+            num = num + 1;
+            map.put("1", num);
+        }
     }
 }
