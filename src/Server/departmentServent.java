@@ -211,6 +211,10 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         //get local data
         ConcurrentHashMap<String, Course> courseMap = compCourseDatabase.get(semester);
 
+        if (courseMap == null) {
+            return courseList;
+        }
+
         for (Map.Entry<String, Course> entry: courseMap.entrySet()){
             Course course = entry.getValue();
             if (course.getCapacity() - course.getEnrollNumber() > 0){
@@ -291,7 +295,7 @@ public class departmentServent extends UnicastRemoteObject implements Servent {
         } else{
             List<Course> courses = student.getStudentEnrollCourseList();
             for (Course course : courses){
-                if (course.getSemester().equals(semester) && course.getCourseName().substring(0,4).equals(department)){
+                if (course.getSemester().equals(semester) && !course.getCourseName().substring(0,4).equals(this.department)){
                     courseNum = courseNum + 1;
                 }
             }

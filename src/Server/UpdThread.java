@@ -32,7 +32,7 @@ class UpdThread implements Runnable {
         DatagramPacket packet2 = null;
         try {
             info = new String(packet.getData(), 0, packet.getLength());
-            System.out.println("我是服务器，客户端说："+info);
+//            System.out.println("我是服务器，客户端说："+info);
 
             String[] command = info.split(" ");
 

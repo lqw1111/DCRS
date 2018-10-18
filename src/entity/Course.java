@@ -8,7 +8,7 @@ public class Course implements Serializable {
     public boolean login;
     public String CourseName;
     public String semester;
-    public final int capacity = 6;
+    public final int capacity = 1;
     public int enrollNumber;
     public int availability;
     public List<String> studentList = new ArrayList<>();
